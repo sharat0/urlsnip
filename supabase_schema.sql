@@ -27,6 +27,9 @@ create table if not exists public.links (
   utm_campaign text
 );
 
+-- Ensure clicks_log column exists if table was created in an earlier schema version
+alter table public.links add column if not exists clicks_log jsonb default '[]'::jsonb;
+
 -- 2. Create Indexes for Links
 create index if not exists idx_links_user_id on public.links(user_id);
 create index if not exists idx_links_short_code on public.links(short_code);
@@ -35,18 +38,22 @@ create index if not exists idx_links_short_code on public.links(short_code);
 alter table public.links enable row level security;
 
 -- Link Policies
+drop policy if exists "Public can resolve short codes for redirect" on public.links;
 create policy "Public can resolve short codes for redirect"
   on public.links for select
   using (true);
 
+drop policy if exists "Users can create own links" on public.links;
 create policy "Users can create own links"
   on public.links for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own links" on public.links;
 create policy "Users can update own links"
   on public.links for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own links" on public.links;
 create policy "Users can delete own links"
   on public.links for delete
   using (auth.uid() = user_id);
@@ -70,6 +77,9 @@ create table if not exists public.bio_trees (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Ensure clicks_log column exists if table was created in an earlier schema version
+alter table public.bio_trees add column if not exists clicks_log jsonb default '[]'::jsonb;
+
 -- Indexes for Bio Trees
 create index if not exists idx_bio_trees_user_id on public.bio_trees(user_id);
 create index if not exists idx_bio_trees_slug on public.bio_trees(slug);
@@ -78,18 +88,22 @@ create index if not exists idx_bio_trees_slug on public.bio_trees(slug);
 alter table public.bio_trees enable row level security;
 
 -- Bio Tree Policies
+drop policy if exists "Public can view bio trees" on public.bio_trees;
 create policy "Public can view bio trees"
   on public.bio_trees for select
   using (true);
 
+drop policy if exists "Users can create bio trees" on public.bio_trees;
 create policy "Users can create bio trees"
   on public.bio_trees for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own bio trees" on public.bio_trees;
 create policy "Users can update own bio trees"
   on public.bio_trees for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own bio trees" on public.bio_trees;
 create policy "Users can delete own bio trees"
   on public.bio_trees for delete
   using (auth.uid() = user_id);
