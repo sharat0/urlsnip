@@ -1,0 +1,29 @@
+name: Supabase Database Migration Automation
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'supabase_schema.sql'
+      - '.github/workflows/supabase-migration.yml'
+
+jobs:
+  deploy-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply Supabase Schema
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          PGPASSWORD="$SUPABASE_DB_PASSWORD" psql -h "db.${SUPABASE_PROJECT_ID}.supabase.co" -p 5432 -U "postgres" -d "postgres" -f supabase_schema.sql
