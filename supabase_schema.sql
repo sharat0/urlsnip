@@ -65,6 +65,7 @@ create table if not exists public.bio_trees (
   theme text default 'indigo',
   items jsonb default '[]'::jsonb,
   views_count integer default 0 not null,
+  clicks_log jsonb default '[]'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -101,20 +102,26 @@ create policy "Users can delete own bio trees"
 -- ========================================================
 
 -- A. Increment Bio Tree Page Views
-create or replace function public.increment_bio_tree_view(tree_slug text)
+create or replace function public.increment_bio_tree_view(tree_slug text, click_log jsonb default null)
 returns void
 language plpgsql
 security definer
 as $$
 begin
   update public.bio_trees
-  set views_count = coalesce(views_count, 0) + 1
+  set 
+    views_count = coalesce(views_count, 0) + 1,
+    clicks_log = case
+      when click_log is null then clicks_log
+      when clicks_log is null or clicks_log = '[]'::jsonb then jsonb_build_array(click_log)
+      else click_log || clicks_log
+    end
   where lower(slug) = lower(tree_slug);
 end;
 $$;
 
 -- B. Increment Bio Tree Link Clicks
-create or replace function public.increment_bio_tree_link_click(tree_slug text, target_item_id text)
+create or replace function public.increment_bio_tree_link_click(tree_slug text, target_item_id text, click_log jsonb default null)
 returns void
 language plpgsql
 security definer
@@ -140,7 +147,13 @@ begin
 
     if updated_items is not null then
       update public.bio_trees
-      set items = updated_items
+      set 
+        items = updated_items,
+        clicks_log = case
+          when click_log is null then clicks_log
+          when clicks_log is null or clicks_log = '[]'::jsonb then jsonb_build_array(click_log)
+          else click_log || clicks_log
+        end
       where lower(slug) = lower(tree_slug);
     end if;
   end if;

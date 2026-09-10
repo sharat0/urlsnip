@@ -76,24 +76,90 @@ export function getShortUrl(shortCode: string): string {
 }
 
 /**
- * Simulates referrer, device, and location breakdown for clicks log
+ * Detects real traffic referrer source
  */
-export function createClickLog(): ClickData {
-  const referrers = ['Direct', 'Twitter / X', 'LinkedIn', 'Google Search', 'GitHub', 'Reddit', 'Email Campaign'];
-  const devices: ('Desktop' | 'Mobile' | 'Tablet')[] = ['Desktop', 'Mobile', 'Tablet'];
-  const locations = ['United States', 'Germany', 'United Kingdom', 'Japan', 'Canada', 'France', 'India', 'Brazil', 'Australia'];
-  
-  const randomReferrer = referrers[Math.floor(Math.random() * referrers.length)];
-  const randomDevice = devices[Math.floor(Math.random() * devices.length)];
-  const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+export function detectReferrer(overrideReferrer?: string): string {
+  if (overrideReferrer && overrideReferrer.trim()) return overrideReferrer.trim();
 
+  const ref = typeof document !== 'undefined' && document.referrer ? document.referrer.toLowerCase() : '';
+  if (!ref) return 'Direct Visit';
+  if (ref.includes('t.co') || ref.includes('twitter.com') || ref.includes('x.com')) return 'Twitter / X';
+  if (ref.includes('linkedin.com')) return 'LinkedIn';
+  if (ref.includes('github.com')) return 'GitHub';
+  if (ref.includes('instagram.com')) return 'Instagram';
+  if (ref.includes('facebook.com') || ref.includes('fb.com')) return 'Facebook';
+  if (ref.includes('reddit.com')) return 'Reddit';
+  if (ref.includes('youtube.com')) return 'YouTube';
+  if (ref.includes('google.')) return 'Google Search';
+  if (ref.includes('bing.com') || ref.includes('duckduckgo.com') || ref.includes('yahoo.com')) return 'Search Engine';
+  
+  try {
+    const url = new URL(document.referrer);
+    return url.hostname.replace(/^www\./, '');
+  } catch {
+    return 'External Referral';
+  }
+}
+
+/**
+ * Detects real user device type
+ */
+export function detectDevice(): 'Desktop' | 'Mobile' | 'Tablet' {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+  if (/ipad|tablet|(android(?!.*mobile))/i.test(ua)) {
+    return 'Tablet';
+  }
+  if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/i.test(ua)) {
+    return 'Mobile';
+  }
+  return 'Desktop';
+}
+
+/**
+ * Detects visitor location/country from browser locale & timezone
+ */
+export function detectLocation(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (tz.includes('Kolkata') || tz.includes('Calcutta')) return 'India';
+    if (tz.includes('New_York') || tz.includes('Los_Angeles') || tz.includes('Chicago') || tz.includes('Denver') || tz.includes('Phoenix')) return 'United States';
+    if (tz.includes('London')) return 'United Kingdom';
+    if (tz.includes('Berlin') || tz.includes('Frankfurt')) return 'Germany';
+    if (tz.includes('Tokyo')) return 'Japan';
+    if (tz.includes('Paris')) return 'France';
+    if (tz.includes('Toronto') || tz.includes('Vancouver')) return 'Canada';
+    if (tz.includes('Sydney') || tz.includes('Melbourne')) return 'Australia';
+    if (tz.includes('Sao_Paulo')) return 'Brazil';
+    
+    if (tz.startsWith('America/')) return 'Americas';
+    if (tz.startsWith('Europe/')) return 'Europe';
+    if (tz.startsWith('Asia/')) return 'Asia-Pacific';
+    if (tz.startsWith('Africa/')) return 'Africa';
+    if (tz.startsWith('Australia/')) return 'Australia';
+  } catch {}
+
+  const lang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
+  if (lang.includes('IN')) return 'India';
+  if (lang.includes('US')) return 'United States';
+  if (lang.includes('GB')) return 'United Kingdom';
+  if (lang.includes('DE')) return 'Germany';
+  if (lang.includes('JP')) return 'Japan';
+  if (lang.includes('FR')) return 'France';
+  if (lang.includes('BR')) return 'Brazil';
+  return 'Global Visitor';
+}
+
+/**
+ * Creates accurate ClickData log using real browser & visitor metrics
+ */
+export function createClickLog(customReferrer?: string): ClickData {
   return {
     id: `click-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     timestamp: new Date().toISOString(),
-    referrer: randomReferrer,
-    device: randomDevice,
-    location: randomLocation,
-    userAgent: navigator.userAgent
+    referrer: detectReferrer(customReferrer),
+    device: detectDevice(),
+    location: detectLocation(),
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
   };
 }
 

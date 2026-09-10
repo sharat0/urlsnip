@@ -51,6 +51,7 @@ export interface BioTree {
   theme: BioTreeTheme;
   items: BioTreeItem[];
   viewsCount: number;
+  clicksLog?: ClickData[];
   createdAt: string;
   updatedAt: string;
   userId?: string;

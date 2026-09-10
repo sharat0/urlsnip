@@ -86,6 +86,7 @@ export function mapRowToBioTree(row: any): BioTree {
     theme: row.theme || 'indigo',
     items: row.items || [],
     viewsCount: row.views_count || 0,
+    clicksLog: row.clicks_log || [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     userId: row.user_id
@@ -105,6 +106,7 @@ export function mapBioTreeToRow(tree: BioTree, userId: string): any {
     theme: tree.theme || 'indigo',
     items: tree.items || [],
     views_count: tree.viewsCount || 0,
+    clicks_log: tree.clicksLog || [],
     created_at: tree.createdAt,
     updated_at: tree.updatedAt
   };

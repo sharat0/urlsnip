@@ -20,10 +20,17 @@ export const AnalyticsView: React.FC = () => {
   const selectedLink = links.find(l => l.id === selectedEntityId);
   const selectedBioTree = bioTrees.find(t => t.id === selectedEntityId);
 
-  // Compute clicks log array
+  // Compute clicks log array combining short links & bio trees
   let clicks = selectedEntityId === 'all'
-    ? links.flatMap(l => l.clicksLog)
-    : (selectedLink ? selectedLink.clicksLog : []);
+    ? [
+        ...links.flatMap(l => l.clicksLog || []),
+        ...bioTrees.flatMap(t => t.clicksLog || [])
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    : selectedLink
+    ? selectedLink.clicksLog || []
+    : selectedBioTree
+    ? selectedBioTree.clicksLog || []
+    : [];
 
   // Compute total engagement
   let totalEngagement = 0;

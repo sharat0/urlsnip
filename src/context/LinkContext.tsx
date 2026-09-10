@@ -616,21 +616,23 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const recordBioTreePageVisit = (slug: string) => {
     const cleanSlug = slug.toLowerCase();
     const target = bioTrees.find(t => t.slug.toLowerCase() === cleanSlug);
+    const clickData = createClickLog('Bio Page Visit');
 
     if (target) {
       const updated = {
         ...target,
-        viewsCount: target.viewsCount + 1
+        viewsCount: target.viewsCount + 1,
+        clicksLog: [clickData, ...(target.clicksLog || [])]
       };
 
       setBioTrees(prev => prev.map(t => t.id === target.id ? updated : t));
 
       if (isSupabaseConfigured && supabase) {
-        supabase.rpc('increment_bio_tree_view', { tree_slug: cleanSlug }).then(({ error }) => {
+        supabase.rpc('increment_bio_tree_view', { tree_slug: cleanSlug, click_log: clickData }).then(({ error }) => {
           if (error && !target.id.startsWith('tree-')) {
             supabase!
               .from('bio_trees')
-              .update({ views_count: updated.viewsCount })
+              .update({ views_count: updated.viewsCount, clicks_log: updated.clicksLog })
               .eq('id', target.id)
               .then(({ error: updateErr }) => {
                 if (updateErr) console.error('Error updating Bio Tree views in Supabase:', updateErr.message);
@@ -639,19 +641,20 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
       }
     } else if (isSupabaseConfigured && supabase) {
-      supabase.rpc('increment_bio_tree_view', { tree_slug: cleanSlug }).then(({ error }) => {
+      supabase.rpc('increment_bio_tree_view', { tree_slug: cleanSlug, click_log: clickData }).then(({ error }) => {
         if (error) {
           supabase!
             .from('bio_trees')
-            .select('id, views_count')
+            .select('id, views_count, clicks_log')
             .ilike('slug', cleanSlug)
             .maybeSingle()
             .then(({ data, error: selectErr }) => {
               if (!selectErr && data) {
                 const newViews = (data.views_count || 0) + 1;
+                const newLogs = [clickData, ...(data.clicks_log || [])];
                 supabase!
                   .from('bio_trees')
-                  .update({ views_count: newViews })
+                  .update({ views_count: newViews, clicks_log: newLogs })
                   .eq('id', data.id)
                   .then(({ error: updateErr }) => {
                     if (updateErr) console.error('Error updating remote Bio Tree views:', updateErr.message);
@@ -673,6 +676,10 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return false;
     };
 
+    const targetItem = target?.items.find(matchesItem);
+    const itemTitle = targetItem ? targetItem.title : 'Bio Link Button';
+    const clickData = createClickLog(`Bio Link (${itemTitle})`);
+
     if (target) {
       const updatedItems = target.items.map(item =>
         matchesItem(item) ? { ...item, clicksCount: (item.clicksCount || 0) + 1 } : item
@@ -680,7 +687,8 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const updated = {
         ...target,
-        items: updatedItems
+        items: updatedItems,
+        clicksLog: [clickData, ...(target.clicksLog || [])]
       };
 
       setBioTrees(prev => prev.map(t => t.id === target.id ? updated : t));
@@ -688,12 +696,13 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isSupabaseConfigured && supabase) {
         supabase.rpc('increment_bio_tree_link_click', {
           tree_slug: cleanSlug,
-          target_item_id: itemId
+          target_item_id: itemId,
+          click_log: clickData
         }).then(({ error }) => {
           if (error && !target.id.startsWith('tree-')) {
             supabase!
               .from('bio_trees')
-              .update({ items: updatedItems })
+              .update({ items: updatedItems, clicks_log: updated.clicksLog })
               .eq('id', target.id)
               .then(({ error: updateErr }) => {
                 if (updateErr) console.error('Error updating Bio Tree click count in Supabase:', updateErr.message);
@@ -704,12 +713,13 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else if (isSupabaseConfigured && supabase) {
       supabase.rpc('increment_bio_tree_link_click', {
         tree_slug: cleanSlug,
-        target_item_id: itemId
+        target_item_id: itemId,
+        click_log: clickData
       }).then(({ error }) => {
         if (error) {
           supabase!
             .from('bio_trees')
-            .select('id, items')
+            .select('id, items, clicks_log')
             .ilike('slug', cleanSlug)
             .maybeSingle()
             .then(({ data, error: selectErr }) => {
@@ -719,9 +729,10 @@ export const LinkProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     ? { ...item, clicksCount: (item.clicksCount || 0) + 1 }
                     : item
                 );
+                const newLogs = [clickData, ...(data.clicks_log || [])];
                 supabase!
                   .from('bio_trees')
-                  .update({ items: updatedItems })
+                  .update({ items: updatedItems, clicks_log: newLogs })
                   .eq('id', data.id)
                   .then(({ error: updateErr }) => {
                     if (updateErr) console.error('Error updating remote Bio Tree click:', updateErr.message);
